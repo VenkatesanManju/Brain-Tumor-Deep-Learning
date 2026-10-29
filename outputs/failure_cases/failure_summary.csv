@@ -1,0 +1,3 @@
+dataset_type,total_evaluated,correct_count,failure_count,accuracy
+external,50,49,1,0.98
+internal,50,50,0,1.0

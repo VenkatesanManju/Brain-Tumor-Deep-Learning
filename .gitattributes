@@ -1,0 +1,27 @@
+# Auto-detect text files and normalize line endings to LF on commit
+* text=auto
+
+# Source code files
+*.py text eol=lf
+*.sh text eol=lf
+*.json text eol=lf
+*.md text
+*.txt text
+*.html text
+*.css text
+*.js text
+*.svg text
+
+# Binary documents and media files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.mat binary
+
+# Large model weights (Preconfigured for Git LFS if enabled)
+# *.pt filter=lfs diff=lfs merge=lfs -text
+# *.pth filter=lfs diff=lfs merge=lfs -text
+# *.onnx filter=lfs diff=lfs merge=lfs -text

@@ -1,0 +1,18 @@
+{
+  "ResNet50": {
+    "accuracy": 0.9525,
+    "macro_f1": 0.9515698652130944
+  },
+  "EfficientNetB0": {
+    "accuracy": 0.95375,
+    "macro_f1": 0.9528234580401569
+  },
+  "DenseNet121": {
+    "accuracy": 0.954375,
+    "macro_f1": 0.9533913714808484
+  },
+  "Ensemble": {
+    "accuracy": 0.956875,
+    "macro_f1": 0.9558838830142675
+  }
+}

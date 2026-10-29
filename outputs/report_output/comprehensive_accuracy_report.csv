@@ -1,0 +1,13 @@
+Dataset,Model,Accuracy (%),Macro Precision (%),Macro Recall (%),Macro F1-Score (%)
+Internal Test,ResNet50,95.25,95.61,95.25,95.16
+Internal Test,EfficientNetB0,95.38,95.76,95.38,95.28
+Internal Test,DenseNet121,95.44,95.73,95.44,95.34
+Internal Test,Ensemble (Soft-Voting),95.69,96.01,95.69,95.59
+External Test,ResNet50,90.7,94.97,90.64,92.69
+External Test,EfficientNetB0,92.43,96.16,92.1,94.05
+External Test,DenseNet121,90.54,93.42,90.13,91.3
+External Test,Ensemble (Soft-Voting),94.06,96.54,93.87,95.13
+External Raw Test,ResNet50,90.7,94.97,90.64,92.69
+External Raw Test,EfficientNetB0,92.43,96.16,92.1,94.05
+External Raw Test,DenseNet121,90.54,93.42,90.13,91.3
+External Raw Test,Ensemble (Soft-Voting),94.06,96.54,93.87,95.13

@@ -1,0 +1,36 @@
+{
+  "rows": [
+    {
+      "model": "ResNet50",
+      "internal_accuracy": 0.9525,
+      "external_accuracy": 0.9069843342036553,
+      "generalization_gap": 0.045515665796344695,
+      "internal_macro_f1": 0.9515698652130944,
+      "external_macro_f1": 0.9269466063535705
+    },
+    {
+      "model": "EfficientNetB0",
+      "internal_accuracy": 0.95375,
+      "external_accuracy": 0.9242819843342036,
+      "generalization_gap": 0.029468015665796377,
+      "internal_macro_f1": 0.9528234580401569,
+      "external_macro_f1": 0.9405216038929368
+    },
+    {
+      "model": "DenseNet121",
+      "internal_accuracy": 0.954375,
+      "external_accuracy": 0.9053524804177546,
+      "generalization_gap": 0.04902251958224535,
+      "internal_macro_f1": 0.9533913714808484,
+      "external_macro_f1": 0.9129829223993168
+    },
+    {
+      "model": "Ensemble",
+      "internal_accuracy": 0.956875,
+      "external_accuracy": 0.9406005221932114,
+      "generalization_gap": 0.01627447780678859,
+      "internal_macro_f1": 0.9558838830142675,
+      "external_macro_f1": 0.9513381107631099
+    }
+  ]
+}

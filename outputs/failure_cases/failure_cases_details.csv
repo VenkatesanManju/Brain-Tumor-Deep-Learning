@@ -1,0 +1,2 @@
+dataset_type,sample_index,true_label,pred_label,is_correct,mean_iou,mean_cossim,eas_score,agreement_confidence
+external,40,1,2,0,0.2381272669999161,0.5044403870900472,0.3712838270449817,0.0826832761068547

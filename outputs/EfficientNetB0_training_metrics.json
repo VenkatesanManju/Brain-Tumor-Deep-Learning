@@ -1,0 +1,37 @@
+{
+  "model": "EfficientNetB0",
+  "epochs": [
+    {
+      "epoch": 1,
+      "train_loss": 0.5009623722869809,
+      "val_accuracy": 0.944047619047619,
+      "val_macro_f1": 0.9439395063034794
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.30832120415543307,
+      "val_accuracy": 0.9761904761904762,
+      "val_macro_f1": 0.9760956056654256
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.27670469784936985,
+      "val_accuracy": 0.9857142857142858,
+      "val_macro_f1": 0.9856937701837578
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.2501171652258945,
+      "val_accuracy": 0.9892857142857143,
+      "val_macro_f1": 0.989296944429147
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.24199957687313817,
+      "val_accuracy": 0.9904761904761905,
+      "val_macro_f1": 0.9905040395254481
+    }
+  ],
+  "best_val_accuracy": 0.9904761904761905,
+  "best_val_macro_f1": 0.9905040395254481
+}

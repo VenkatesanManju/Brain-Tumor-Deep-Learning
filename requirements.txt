@@ -1,0 +1,34 @@
+# ==============================================================================
+# NeuroVision AI - Dependencies Specification
+# ==============================================================================
+
+# Core Scientific Stack
+numpy>=1.26.0
+pandas>=2.2.0
+scipy>=1.13.0
+Pillow>=10.4.0
+matplotlib>=3.9.0
+seaborn>=0.13.0
+h5py>=3.12.0
+opencv-python>=4.10.0
+imagehash>=4.3.1
+scikit-learn>=1.5.0
+tqdm>=4.66.0
+
+# PyTorch Deep Learning Stack
+# Note: For CUDA-accelerated GPU training, install PyTorch with your CUDA toolkit:
+# pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cu121
+torch>=2.2.0
+torchvision>=0.17.0
+
+# Explainable AI (XAI)
+grad-cam>=1.5.0
+
+# Web Application & Reporting
+Flask>=3.0.0
+Werkzeug>=3.0.0
+fpdf>=1.7.2
+fpdf2>=2.7.0
+
+# Testing & Quality
+pytest>=8.0.0
