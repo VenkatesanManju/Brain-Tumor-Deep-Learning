@@ -110,7 +110,7 @@
     </div>
 
     <!-- Upload Card -->
-    <div class="max-w-4xl mx-auto mb-10">
+    <div id="uploadCard" class="max-w-4xl mx-auto mb-10 transition-all duration-300">
       <div class="glass-card rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-bold text-white flex items-center gap-2">
@@ -144,9 +144,14 @@
               <p id="fileSize" class="text-[10px] text-slate-400"></p>
             </div>
           </div>
-          <button id="analyzeBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2 shrink-0">
-            <i class="fa-solid fa-wand-magic-sparkles"></i> Analyze Scan & Explain
-          </button>
+          <div class="flex items-center space-x-2 shrink-0">
+            <button id="cancelFileBtn" type="button" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all">
+              Change
+            </button>
+            <button id="analyzeBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Analyze Scan & Explain
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -188,6 +193,11 @@
                 <p class="font-semibold text-slate-300 mb-1"><i class="fa-solid fa-circle-info text-indigo-400"></i> Clinical Guidance:</p>
                 <p>The AI ensemble has halted diagnostic evaluation to prevent false predictions. Please upload a valid 2D Brain MRI slice (Axial, Sagittal, or Coronal orientation).</p>
               </div>
+              <div class="mt-4">
+                <button onclick="resetUpload()" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-amber-500/40 text-amber-300 text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-lg">
+                  <i class="fa-solid fa-arrow-rotate-left"></i> Upload Another Scan
+                </button>
+              </div>
             </div>
           </div>
           <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800 text-center shrink-0">
@@ -227,6 +237,9 @@
               </p>
             </div>
           </div>
+          <button onclick="resetUpload()" class="px-4 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-indigo-500 text-slate-200 text-xs font-semibold transition-all flex items-center gap-2 shrink-0 shadow-lg cursor-pointer">
+            <i class="fa-solid fa-cloud-arrow-up text-indigo-400"></i> Upload Another Scan
+          </button>
         </div>
       </div>
 
@@ -309,12 +322,14 @@
   </main>
 
   <script>
+    const uploadCard = document.getElementById('uploadCard');
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
     const filePreviewBar = document.getElementById('filePreviewBar');
     const fileName = document.getElementById('fileName');
     const fileSize = document.getElementById('fileSize');
     const analyzeBtn = document.getElementById('analyzeBtn');
+    const cancelFileBtn = document.getElementById('cancelFileBtn');
 
     const loadingContainer = document.getElementById('loadingContainer');
     const resultsContainer = document.getElementById('resultsContainer');
@@ -351,7 +366,18 @@
       currentFile = file;
       fileName.textContent = file.name;
       fileSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
+      dropzone.classList.add('hidden');
       filePreviewBar.classList.remove('hidden');
+    }
+
+    if (cancelFileBtn) {
+      cancelFileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.value = '';
+        currentFile = null;
+        filePreviewBar.classList.add('hidden');
+        dropzone.classList.remove('hidden');
+      });
     }
 
     analyzeBtn.addEventListener('click', () => {
@@ -364,6 +390,7 @@
       const formData = new FormData();
       formData.append('file', file);
 
+      uploadCard.classList.add('hidden');
       showLoading(true);
 
       try {
@@ -376,27 +403,30 @@
           renderResults(data);
         } else {
           alert(data.error || 'Failed to analyze image.');
+          uploadCard.classList.remove('hidden');
+          dropzone.classList.remove('hidden');
+          filePreviewBar.classList.add('hidden');
         }
       } catch (err) {
         alert('Network error during prediction: ' + err.message);
+        uploadCard.classList.remove('hidden');
+        dropzone.classList.remove('hidden');
+        filePreviewBar.classList.add('hidden');
       } finally {
         showLoading(false);
       }
     }
 
-    async function testSample(className) {
-      showLoading(true);
-      try {
-        const imgRes = await fetch(`/sample/${className}`);
-        if (!imgRes.ok) throw new Error('Sample image not available');
-        const blob = await imgRes.blob();
-        const file = new File([blob], `${className}_sample.png`, { type: 'image/png' });
-        handleFile(file);
-        await uploadAndAnalyze(file);
-      } catch (err) {
-        alert('Error loading sample: ' + err.message);
-        showLoading(false);
-      }
+    function resetUpload() {
+      resultsContainer.classList.add('hidden');
+      loadingContainer.classList.add('hidden');
+      uploadCard.classList.remove('hidden');
+      dropzone.classList.remove('hidden');
+      filePreviewBar.classList.add('hidden');
+      fileInput.value = '';
+      currentFile = null;
+      lastAnalysisResult = null;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function showLoading(isLoading) {
@@ -410,6 +440,7 @@
 
     function renderResults(data) {
       lastAnalysisResult = data;
+      uploadCard.classList.add('hidden');
       resultsContainer.classList.remove('hidden');
 
       const scanRejectionCard = document.getElementById('scanRejectionCard');
