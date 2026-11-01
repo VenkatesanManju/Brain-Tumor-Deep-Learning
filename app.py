@@ -208,25 +208,150 @@ def check_out_of_distribution(
     return False, ""
 
 
-def compute_gradcam_overlay(input_tensor: torch.Tensor, pil_img: Image.Image, target_class: int) -> tuple[np.ndarray, np.ndarray]:
-    cams = []
+MODEL_DESCRIPTIONS = {
+    "ResNet50": "Residual CNN (50 layers)",
+    "EfficientNetB0": "Compound Scaled CNN",
+    "DenseNet121": "Dense Connectivity CNN (121 layers)",
+    "ConvNeXtTiny": "Modern ConvNeXt CNN",
+}
+
+MODEL_FORMATTED_NAMES = {
+    "ResNet50": "ResNet-50",
+    "EfficientNetB0": "EfficientNet-B0",
+    "DenseNet121": "DenseNet-121",
+    "ConvNeXtTiny": "ConvNeXt-Tiny",
+}
+
+
+def generate_pairwise_overlap_overlay(
+    cam1: np.ndarray,
+    cam2: np.ndarray,
+    pil_img: Image.Image,
+) -> tuple[np.ndarray, float, float, float]:
+    """Generate anti-aliased Green / Red / Yellow overlap visualization and pairwise EAS metrics."""
+    # Threshold at mean activation
+    t1 = cam1 >= cam1.mean()
+    t2 = cam2 >= cam2.mean()
+
+    # Exact metrics matching src/eas.py
+    intersection = np.logical_and(t1, t2)
+    union = np.logical_or(t1, t2)
+    iou = float(intersection.sum() / max(union.sum(), 1))
+
+    a = cam1.reshape(-1)
+    b = cam2.reshape(-1)
+    denom = np.linalg.norm(a) * np.linalg.norm(b)
+    cossim = float(np.dot(a, b) / max(denom, 1e-12))
+    eas = 0.5 * iou + 0.5 * cossim
+
+    # Anti-aliased smoothed masks
+    m1_smooth = cv2.GaussianBlur(t1.astype(np.float32), (9, 9), 2.5)
+    m2_smooth = cv2.GaussianBlur(t2.astype(np.float32), (9, 9), 2.5)
+
+    img_rgb = np.array(pil_img.convert("RGB"), dtype=np.float32)
+    h, w, _ = img_rgb.shape
+
+    m1_smooth = cv2.resize(m1_smooth, (w, h))
+    m2_smooth = cv2.resize(m2_smooth, (w, h))
+
+    # Color layer: Model 1 contributes Green, Model 2 contributes Red, Overlap becomes Yellow
+    color_layer = np.zeros_like(img_rgb)
+    # Red channel
+    color_layer[:, :, 0] = np.clip(m2_smooth * 235.0 + (m1_smooth * m2_smooth) * 20.0, 0, 255)
+    # Green channel
+    color_layer[:, :, 1] = np.clip(m1_smooth * 220.0 + (m1_smooth * m2_smooth) * 20.0, 0, 255)
+    # Blue channel
+    color_layer[:, :, 2] = 0.0
+
+    # Combined alpha mask
+    alpha_mask = np.clip(np.maximum(m1_smooth, m2_smooth), 0, 1)[:, :, np.newaxis]
+
+    # Blend: 45% background MRI, 55% color mask where alpha is active
+    overlay = img_rgb * (1.0 - alpha_mask * 0.55) + color_layer * (alpha_mask * 0.55)
+    overlay = np.clip(overlay, 0, 255).astype(np.uint8)
+
+    return overlay, eas, iou, cossim
+
+
+def compute_all_gradcams_and_pairs(
+    input_tensor: torch.Tensor,
+    pil_img: Image.Image,
+    target_class: int,
+) -> dict:
+    individual_cams = {}
     for name, model in MODELS.items():
-        target_layer = GRADCAM_TARGETS[name]
+        target_layer = GRADCAM_TARGETS.get(name)
+        if target_layer is None:
+            continue
         extractor = GradCAM(model, target_layer)
         try:
             cam = extractor.generate(input_tensor, target_class)
-            cams.append(cam)
+            individual_cams[name] = cam
         finally:
             extractor.remove_hooks()
 
-    if cams:
-        consensus_cam = np.mean(cams, axis=0)
+    img_np = np.array(pil_img)
+
+    # 1. Consensus CAM
+    if individual_cams:
+        consensus_cam = np.mean(list(individual_cams.values()), axis=0)
         max_val = consensus_cam.max()
         if max_val > 0:
             consensus_cam = consensus_cam / max_val
     else:
         consensus_cam = np.zeros((224, 224), dtype=np.float32)
 
+    consensus_heatmap = cv2.applyColorMap(np.uint8(255 * consensus_cam), cv2.COLORMAP_JET)
+    consensus_heatmap = cv2.cvtColor(consensus_heatmap, cv2.COLOR_BGR2RGB)
+    consensus_overlay = np.float32(consensus_heatmap) * 0.4 + np.float32(img_np) * 0.6
+    consensus_overlay = np.clip(consensus_overlay, 0, 255).astype(np.uint8)
+    consensus_b64 = pil_to_base64(Image.fromarray(consensus_overlay))
+
+    # 2. Individual Model CAM Overlays
+    individual_cams_b64 = {}
+    for name, cam in individual_cams.items():
+        hm = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
+        hm = cv2.cvtColor(hm, cv2.COLOR_BGR2RGB)
+        ov = np.float32(hm) * 0.4 + np.float32(img_np) * 0.6
+        ov = np.clip(ov, 0, 255).astype(np.uint8)
+        individual_cams_b64[name] = pil_to_base64(Image.fromarray(ov))
+
+    # 3. Pairwise EAS Overlays
+    pairwise_data = {}
+    model_keys = list(individual_cams.keys())
+    for i in range(len(model_keys)):
+        for j in range(i + 1, len(model_keys)):
+            m1 = model_keys[i]
+            m2 = model_keys[j]
+            pair_key = f"{m1}_vs_{m2}"
+            pair_overlay, eas, iou, cossim = generate_pairwise_overlap_overlay(
+                individual_cams[m1], individual_cams[m2], pil_img
+            )
+            pairwise_data[pair_key] = {
+                "image_b64": pil_to_base64(Image.fromarray(pair_overlay)),
+                "model1_key": m1,
+                "model2_key": m2,
+                "model1_name": MODEL_FORMATTED_NAMES.get(m1, m1),
+                "model2_name": MODEL_FORMATTED_NAMES.get(m2, m2),
+                "model1_title": MODEL_DESCRIPTIONS.get(m1, m1),
+                "model2_title": MODEL_DESCRIPTIONS.get(m2, m2),
+                "eas_pct": round(eas * 100.0, 1),
+                "iou_pct": round(iou * 100.0, 1),
+                "cossim": round(cossim, 2),
+            }
+
+    return {
+        "consensus_cam": consensus_cam,
+        "consensus_overlay_b64": consensus_b64,
+        "individual_cams_b64": individual_cams_b64,
+        "pairwise_cams": pairwise_data,
+    }
+
+
+def compute_gradcam_overlay(input_tensor: torch.Tensor, pil_img: Image.Image, target_class: int) -> tuple[np.ndarray, np.ndarray]:
+    res = compute_all_gradcams_and_pairs(input_tensor, pil_img, target_class)
+    # decode consensus overlay back to array for compatibility if needed
+    consensus_cam = res["consensus_cam"]
     img_np = np.array(pil_img)
     heatmap = cv2.applyColorMap(np.uint8(255 * consensus_cam), cv2.COLORMAP_JET)
     heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
@@ -455,13 +580,15 @@ def predict():
         # Out-of-Distribution (OOD) Guardrail Check
         is_ood, ood_reason = check_out_of_distribution(raw_check_img, ensemble_probs, indiv_preds)
 
-        # Grad-CAM heatmap generation
-        cam_map, overlay_np = compute_gradcam_overlay(input_tensor, resized_pil, top_id)
+        # Grad-CAM consensus, individual heatmaps, and pairwise EAS overlays
+        cam_bundle = compute_all_gradcams_and_pairs(input_tensor, resized_pil, top_id)
+        cam_map = cam_bundle["consensus_cam"]
+        overlay_b64 = cam_bundle["consensus_overlay_b64"]
+        individual_cams_b64 = cam_bundle["individual_cams_b64"]
+        pairwise_cams = cam_bundle["pairwise_cams"]
 
-        # Base64 images
+        # Base64 original image
         orig_b64 = pil_to_base64(resized_pil)
-        overlay_pil = Image.fromarray(overlay_np)
-        overlay_b64 = pil_to_base64(overlay_pil)
 
         # Real-time Explainable AI text explanation
         xai_explanation = generate_realtime_xai_explanation(
@@ -487,6 +614,8 @@ def predict():
             "individual_details": individual_details,
             "original_image_b64": orig_b64,
             "gradcam_overlay_b64": overlay_b64,
+            "individual_cams_b64": individual_cams_b64,
+            "pairwise_cams": pairwise_cams,
             "xai_explanation": xai_explanation,
             "is_ood": is_ood,
             "ood_reason": ood_reason,

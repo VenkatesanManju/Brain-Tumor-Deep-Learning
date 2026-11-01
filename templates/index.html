@@ -278,24 +278,74 @@
 
       <!-- Side-by-Side MRI & Grad-CAM Visual Heatmap Viewer -->
       <div class="glass-card rounded-2xl p-6 sm:p-8 shadow-xl">
-        <h4 class="text-base font-bold text-white mb-6 flex items-center gap-2">
-          <i class="fa-solid fa-eye text-cyan-400"></i> Grad-CAM Neural Attention & Spatial Localization
-        </h4>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 text-center">
-            <p class="text-xs font-semibold text-slate-400 mb-3">Original Uploaded Brain MRI</p>
-            <img id="origImg" class="max-h-72 mx-auto rounded-lg shadow-md object-contain" alt="Original MRI">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+          <div>
+            <h4 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-eye text-cyan-400"></i> Grad-CAM Neural Attention & Spatial Localization
+            </h4>
+            <p class="text-xs text-slate-400 mt-1">Multi-architecture consensus and pairwise explainability agreement</p>
           </div>
-          <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 text-center">
-            <div class="flex items-center justify-between mb-3 px-2">
-              <p class="text-xs font-semibold text-cyan-400">Grad-CAM Neural Attention Overlay</p>
-              <span class="text-[10px] text-slate-400">Hotspot = AI Focal Region</span>
+
+          <!-- Navigation Controls: Tabs & Pairwise Dropdown -->
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Architecture Tabs -->
+            <div id="camTabs" class="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+              <button type="button" onclick="selectCamTab('consensus')" id="tabBtn-consensus" class="cam-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all bg-purple-600 text-white shadow-sm cursor-pointer">
+                Consensus
+              </button>
+              <button type="button" onclick="selectCamTab('ResNet50')" id="tabBtn-ResNet50" class="cam-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer">
+                ResNet-50
+              </button>
+              <button type="button" onclick="selectCamTab('EfficientNetB0')" id="tabBtn-EfficientNetB0" class="cam-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer">
+                EfficientNet-B0
+              </button>
+              <button type="button" onclick="selectCamTab('DenseNet121')" id="tabBtn-DenseNet121" class="cam-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer">
+                DenseNet-121
+              </button>
             </div>
-            <img id="camImg" class="max-h-72 mx-auto rounded-lg shadow-md object-contain transition-opacity duration-150" alt="Grad-CAM Overlay">
+
+            <!-- Dropdown: Compare Model Pairs (EAS) -->
+            <div class="relative">
+              <select id="easPairSelect" onchange="onPairSelectChange(this.value)" class="bg-slate-950/90 text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-700 hover:border-cyan-500 focus:outline-none focus:border-cyan-400 cursor-pointer transition-all shadow-sm">
+                <option value="none">▾ Compare 3 Model Pairs (EAS)</option>
+                <option value="ResNet50_vs_EfficientNetB0">ResNet-50 vs EfficientNet-B0</option>
+                <option value="ResNet50_vs_DenseNet121">ResNet-50 vs DenseNet-121</option>
+                <option value="EfficientNetB0_vs_DenseNet121">EfficientNet-B0 vs DenseNet-121</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Left: Original MRI -->
+          <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 text-center flex flex-col justify-between">
+            <div>
+              <p class="text-xs font-semibold text-slate-400 mb-3">Original Uploaded Brain MRI</p>
+              <img id="origImg" class="max-h-72 mx-auto rounded-lg shadow-md object-contain" alt="Original MRI">
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">Raw anatomical scan input for model verification</p>
+          </div>
+
+          <!-- Right: Dynamic Heatmap / Pairwise Overlap Viewer -->
+          <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-3 px-1">
+                <div id="camViewerTitle" class="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
+                  Consensus Heatmap (Average Activation)
+                </div>
+                <div id="camViewerLegend" class="text-[10px] text-slate-400">
+                  Red/Yellow = Tumor Focal Area
+                </div>
+              </div>
+              <div class="relative max-h-72 mx-auto w-fit flex items-center justify-center rounded-lg overflow-hidden shadow-md">
+                <img id="camBgOrigImg" class="max-h-72 rounded-lg object-contain" alt="MRI Background">
+                <img id="camImg" class="max-h-72 rounded-lg object-contain absolute inset-0 transition-opacity duration-150" alt="Grad-CAM Overlay">
+              </div>
+            </div>
             <div id="opacitySliderBox" class="mt-3 flex items-center justify-center space-x-3 text-xs text-slate-400">
               <i class="fa-solid fa-sliders text-cyan-400"></i>
-              <span>Heatmap Opacity:</span>
-              <input type="range" id="opacitySlider" min="0.2" max="1.0" step="0.05" value="1.0" class="w-32 accent-cyan-400 cursor-pointer" oninput="document.getElementById('camImg').style.opacity = this.value">
+              <span>Overlay Opacity:</span>
+              <input type="range" id="opacitySlider" min="0.1" max="1.0" step="0.05" value="1.0" class="w-32 accent-cyan-400 cursor-pointer" oninput="document.getElementById('camImg').style.opacity = this.value">
             </div>
           </div>
         </div>
@@ -608,15 +658,157 @@
         `;
       });
 
-      // Heatmaps
+      // Initialize Dynamic Heatmap & Pairwise Overlap Controls
+      renderCamControls(data);
+      selectCamTab('consensus');
+
+      // Set Original MRI Image & Reset Opacity
       document.getElementById('origImg').src = data.original_image_b64;
-      document.getElementById('camImg').src = data.gradcam_overlay_b64;
+      document.getElementById('opacitySlider').value = "1.0";
+      document.getElementById('camImg').style.opacity = "1.0";
 
       // XAI Markdown Report
       document.getElementById('xaiReportContent').innerHTML = marked.parse(data.xai_explanation);
 
       // Smooth Scroll to Results
       resultsContainer.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    let currentCamMode = 'consensus';
+    let currentPairKey = null;
+
+    function renderCamControls(data) {
+      const tabsContainer = document.getElementById('camTabs');
+      const pairSelect = document.getElementById('easPairSelect');
+      if (!tabsContainer || !pairSelect) return;
+
+      // 1. Render Model Navigation Tabs
+      const modelKeys = data.individual_cams_b64 ? Object.keys(data.individual_cams_b64) : ['ResNet50', 'EfficientNetB0', 'DenseNet121'];
+      const formattedNames = {
+        'ResNet50': 'ResNet-50',
+        'EfficientNetB0': 'EfficientNet-B0',
+        'DenseNet121': 'DenseNet-121',
+        'ConvNeXtTiny': 'ConvNeXt-Tiny'
+      };
+
+      let tabsHtml = `
+        <button type="button" onclick="selectCamTab('consensus')" id="tabBtn-consensus" class="cam-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all bg-purple-600 text-white shadow-sm cursor-pointer">
+          Consensus
+        </button>
+      `;
+
+      modelKeys.forEach(mKey => {
+        const dName = formattedNames[mKey] || mKey;
+        tabsHtml += `
+          <button type="button" onclick="selectCamTab('${mKey}')" id="tabBtn-${mKey}" class="cam-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer">
+            ${dName}
+          </button>
+        `;
+      });
+      tabsContainer.innerHTML = tabsHtml;
+
+      // 2. Render Pairwise Dropdown Options
+      const pairKeys = data.pairwise_cams ? Object.keys(data.pairwise_cams) : [];
+      let selectHtml = `<option value="none">▾ Compare ${pairKeys.length} Model Pairs (EAS)</option>`;
+      pairKeys.forEach(pKey => {
+        const pInfo = data.pairwise_cams[pKey];
+        selectHtml += `<option value="${pKey}">${pInfo.model1_name} vs ${pInfo.model2_name}</option>`;
+      });
+      pairSelect.innerHTML = selectHtml;
+      pairSelect.value = 'none';
+      pairSelect.classList.remove('border-cyan-400', 'ring-1', 'ring-cyan-400/50');
+    }
+
+    function selectCamTab(tabName) {
+      currentCamMode = tabName;
+      currentPairKey = null;
+
+      const select = document.getElementById('easPairSelect');
+      if (select) {
+        select.value = 'none';
+        select.classList.remove('border-cyan-400', 'ring-1', 'ring-cyan-400/50');
+      }
+
+      const tabBtns = document.querySelectorAll('.cam-tab-btn');
+      tabBtns.forEach(btn => {
+        btn.classList.remove('bg-purple-600', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-400');
+      });
+      const activeBtn = document.getElementById(`tabBtn-${tabName}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-400');
+        activeBtn.classList.add('bg-purple-600', 'text-white', 'shadow-sm');
+      }
+
+      updateHeatmapDisplay();
+    }
+
+    function onPairSelectChange(pairKey) {
+      if (!pairKey || pairKey === 'none') {
+        selectCamTab('consensus');
+        return;
+      }
+      currentCamMode = 'pair';
+      currentPairKey = pairKey;
+
+      const select = document.getElementById('easPairSelect');
+      if (select) {
+        select.classList.add('border-cyan-400', 'ring-1', 'ring-cyan-400/50');
+      }
+
+      const tabBtns = document.querySelectorAll('.cam-tab-btn');
+      tabBtns.forEach(btn => {
+        btn.classList.remove('bg-purple-600', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-400');
+      });
+
+      updateHeatmapDisplay();
+    }
+
+    function updateHeatmapDisplay() {
+      if (!lastAnalysisResult) return;
+
+      const camImg = document.getElementById('camImg');
+      const camBgImg = document.getElementById('camBgOrigImg');
+      const titleEl = document.getElementById('camViewerTitle');
+      const legendEl = document.getElementById('camViewerLegend');
+
+      if (camBgImg && lastAnalysisResult.original_image_b64) {
+        camBgImg.src = lastAnalysisResult.original_image_b64;
+      }
+
+      if (currentCamMode === 'consensus') {
+        camImg.src = lastAnalysisResult.gradcam_overlay_b64;
+        titleEl.innerHTML = `<span class="text-cyan-400 font-bold">Consensus Heatmap (Average Activation)</span>`;
+        legendEl.innerHTML = `<span class="text-slate-400 text-xs">Red/Yellow = Tumor Focal Area</span>`;
+      } else if (currentCamMode === 'pair') {
+        const pairData = lastAnalysisResult.pairwise_cams && lastAnalysisResult.pairwise_cams[currentPairKey];
+        if (pairData) {
+          camImg.src = pairData.image_b64;
+          titleEl.innerHTML = `
+            <span class="font-bold text-white text-xs sm:text-sm">${pairData.model1_title} vs ${pairData.model2_title}</span>
+            <span class="text-amber-400 font-bold ml-1.5 text-xs">(Overlap EAS: ${pairData.eas_pct}% | IoU: ${pairData.iou_pct}% | CosSim: ${pairData.cossim})</span>
+          `;
+          legendEl.innerHTML = `
+            <span class="text-emerald-400 font-medium">■ Green: ${pairData.model1_title}</span> |
+            <span class="text-rose-400 font-medium">■ Red: ${pairData.model2_title}</span> |
+            <span class="text-yellow-400 font-bold">■ Yellow: Agreement</span>
+          `;
+        }
+      } else {
+        const modelCamB64 = lastAnalysisResult.individual_cams_b64 && lastAnalysisResult.individual_cams_b64[currentCamMode];
+        if (modelCamB64) {
+          camImg.src = modelCamB64;
+          const meta = {
+            'ResNet50': { name: 'ResNet-50', arch: 'Residual Architecture' },
+            'EfficientNetB0': { name: 'EfficientNet-B0', arch: 'Compound Scaled Architecture' },
+            'DenseNet121': { name: 'DenseNet-121', arch: 'Dense Connectivity Architecture' }
+          }[currentCamMode] || { name: currentCamMode, arch: 'CNN Architecture' };
+
+          titleEl.innerHTML = `<span class="text-indigo-300 font-bold">${meta.name} (${meta.arch}) - Attention Map</span>`;
+          legendEl.innerHTML = `<span class="text-slate-400 text-xs">Red/Yellow = AI Focal Attention</span>`;
+        }
+      }
     }
 
     async function downloadPdfReport() {
