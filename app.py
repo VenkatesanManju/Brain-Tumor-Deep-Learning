@@ -420,6 +420,19 @@ def predict():
                 indiv_preds[name] = pred_class
                 indiv_probs[name] = {LABEL_TO_CLASS[i]: float(probs[i]) for i in range(4)}
 
+        # Detailed prediction and confidence per individual model architecture
+        individual_details = {}
+        for name in MODELS.keys():
+            probs_for_model = indiv_probs.get(name, {})
+            top_class = indiv_preds.get(name, "notumor")
+            top_conf = float(probs_for_model.get(top_class, 0.0) * 100.0)
+            individual_details[name] = {
+                "predicted_class": top_class,
+                "display_name": CLASS_DISPLAY_NAMES.get(top_class, top_class),
+                "confidence_pct": round(top_conf, 1),
+                "probabilities": probs_for_model,
+            }
+
         # Anatomical Slice View Detection
         raw_check_img = raw_pil_img if "raw_pil_img" in locals() else pil_img
         detected_view, view_conf = detect_mri_slice_view(raw_check_img)
@@ -471,6 +484,7 @@ def predict():
             "confidence_pct": round(confidence_pct, 2),
             "model_probabilities": model_probs_dict,
             "individual_predictions": indiv_preds,
+            "individual_details": individual_details,
             "original_image_b64": orig_b64,
             "gradcam_overlay_b64": overlay_b64,
             "xai_explanation": xai_explanation,

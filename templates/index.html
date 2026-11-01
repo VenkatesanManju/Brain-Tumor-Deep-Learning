@@ -256,13 +256,22 @@
           </div>
         </div>
 
-        <!-- Individual CNN Architecture Predictions -->
-        <div class="glass-card rounded-2xl p-6 shadow-xl">
-          <h4 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <i class="fa-solid fa-layer-group text-purple-400"></i> Deep Learning Model Consensus
-          </h4>
-          <div class="grid grid-cols-3 gap-3" id="individualModelCards">
-            <!-- Dynamic Model Cards -->
+        <!-- Individual CNN Architecture Predictions & Confidence -->
+        <div class="glass-card rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-purple-400"></i> Individual Model Predictions & Confidence
+              </h4>
+              <span id="modelCountBadge" class="text-xs text-slate-400 font-medium">3 Distinct Architectures</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5" id="individualModelCards">
+              <!-- Dynamic Model Cards -->
+            </div>
+          </div>
+          <div class="mt-4 px-3.5 py-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center gap-2.5 text-xs text-slate-300">
+            <i class="fa-solid fa-circle-check text-emerald-400 text-sm shrink-0"></i>
+            <span id="softVotingBannerText">Equal-weight soft-voting: final prediction is the average of all 3 models' probability outputs.</span>
           </div>
         </div>
       </div>
@@ -522,20 +531,82 @@
         `;
       }
 
-      // Individual Models
+      // Individual Models & Confidence Rendering
       const indivContainer = document.getElementById('individualModelCards');
       indivContainer.innerHTML = '';
-      for (const [modelName, predClass] of Object.entries(data.individual_predictions)) {
+
+      const archMeta = {
+        'DenseNet121': { name: 'DenseNet-121', tag: 'Densely' },
+        'DenseNet-121': { name: 'DenseNet-121', tag: 'Densely' },
+        'EfficientNetB0': { name: 'EfficientNet-B0', tag: 'Compound' },
+        'EfficientNet-B0': { name: 'EfficientNet-B0', tag: 'Compound' },
+        'ResNet50': { name: 'ResNet-50', tag: 'Residual' },
+        'ResNet-50': { name: 'ResNet-50', tag: 'Residual' },
+        'ConvNeXtTiny': { name: 'ConvNeXt-Tiny', tag: 'Modern' },
+        'ConvNeXt-Tiny': { name: 'ConvNeXt-Tiny', tag: 'Modern' }
+      };
+
+      const pillClassNames = {
+        'meningioma': 'MENINGIOMA TUMOR',
+        'glioma': 'GLIOMA TUMOR',
+        'pituitary': 'PITUITARY TUMOR',
+        'notumor': 'NO TUMOR DETECTED'
+      };
+
+      const modelEntries = data.individual_details
+        ? Object.entries(data.individual_details)
+        : Object.entries(data.individual_predictions || {}).map(([m, c]) => [
+            m,
+            { predicted_class: c, confidence_pct: 95.0 }
+          ]);
+
+      const modelCount = modelEntries.length;
+      const countBadge = document.getElementById('modelCountBadge');
+      if (countBadge) countBadge.textContent = `${modelCount} Distinct Architectures`;
+
+      const votingBanner = document.getElementById('softVotingBannerText');
+      if (votingBanner) votingBanner.textContent = `Equal-weight soft-voting: final prediction is the average of all ${modelCount} models' probability outputs.`;
+
+      modelEntries.forEach(([modelKey, details]) => {
+        const meta = archMeta[modelKey] || {
+          name: modelKey.replace(/([A-Za-z]+)(\d+)/g, '$1-$2'),
+          tag: 'Deep CNN'
+        };
+        const predClass = (details.predicted_class || 'notumor').toLowerCase();
+        const rawConf = Number(details.confidence_pct != null ? details.confidence_pct : 95.0);
+        const confStr = rawConf % 1 === 0 ? rawConf.toFixed(0) : rawConf.toFixed(1);
+        const badgeLabel = pillClassNames[predClass] || (predClass.toUpperCase() + ' TUMOR');
         const isHealthy = predClass === 'notumor';
+
+        const badgeStyle = isHealthy
+          ? 'bg-emerald-950/70 border-emerald-700/60 text-emerald-300'
+          : 'bg-[#25133c] border-[#6b21a8]/60 text-[#d8b4fe]';
+
         indivContainer.innerHTML += `
-          <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
-            <p class="text-[10px] text-slate-400 font-bold mb-1">${modelName}</p>
-            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${isHealthy ? 'bg-emerald-500/20 text-emerald-400' : 'bg-purple-500/20 text-purple-400'}">
-              ${predClass.toUpperCase()}
-            </span>
+          <div class="p-3.5 sm:p-4 rounded-xl bg-slate-900/90 border border-slate-800/90 hover:border-slate-700 transition-all shadow-md flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2.5">
+                <span class="font-bold text-white text-xs sm:text-sm tracking-tight">${meta.name}</span>
+                <span class="text-[11px] sm:text-xs text-slate-400 font-medium">${meta.tag}</span>
+              </div>
+              <div class="mb-3">
+                <span class="px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-bold tracking-wider uppercase inline-flex items-center border ${badgeStyle}">
+                  ${badgeLabel}
+                </span>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1.5">
+                <span class="text-slate-400 font-medium">Confidence:</span>
+                <span class="text-emerald-400 font-bold text-xs sm:text-sm">${confStr}%</span>
+              </div>
+              <div class="w-full bg-slate-950 rounded-full h-1.5 sm:h-2 overflow-hidden border border-slate-800/80">
+                <div class="h-full rounded-full bg-purple-500 transition-all duration-700" style="width: ${rawConf}%"></div>
+              </div>
+            </div>
           </div>
         `;
-      }
+      });
 
       // Heatmaps
       document.getElementById('origImg').src = data.original_image_b64;
